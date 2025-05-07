@@ -1,0 +1,93 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+
+body {
+  --tt-toolbar-height: 44px;
+  --tt-theme-text: #333; /* Darker text for light theme */
+  --tt-bg-color: #fff; /* Light background color */
+  --tt-scrollbar-color: #ccc; /* Light scrollbar color */
+
+  .dark & {
+    --tt-theme-text: #333; /* Ensure text remains dark in light theme */
+  }
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  color: var(--tt-theme-text);
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  padding: 0;
+}
+
+html,
+body,
+#root,
+#app {
+  height: 100%;
+  background-color: var(--tt-bg-color);
+}
+
+body {
+  overflow: hidden;
+}
+
+.tiptap.ProseMirror {
+  font-family: "DM Sans", sans-serif;
+}
+
+.content-wrapper {
+  height: calc(100% - var(--tt-toolbar-height));
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    display: block;
+    width: 0.5rem;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f0f0f0; /* Light scrollbar track */
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--tt-scrollbar-color);
+    border-radius: 4px;
+  }
+
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--tt-scrollbar-color) #f0f0f0;
+}
+
+
+
+.simple-editor-content .tiptap.ProseMirror table {
+  border: 1px solid black; /* Black border for the table */
+  border-collapse: collapse; /* Ensure borders don't double up */
+}
+
+.simple-editor-content .tiptap.ProseMirror th,
+.simple-editor-content .tiptap.ProseMirror td {
+  border: 1px solid black; /* Black border for table cells */
+  padding: 8px; /* Add some padding for better readability */
+  text-align: left; /* Align text to the left */
+}
+
+.simple-editor-content {
+  max-width: 980px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.simple-editor-content .tiptap.ProseMirror {
+  padding: 3rem 3rem;
+  background-color: #f9f9f9; /* Light background for editor content */
+  border: 1px solid #ddd; /* Light border for editor */
+  border-radius: 8px;
+}
+
+@media screen and (max-width: 480px) {
+  .simple-editor-content .tiptap.ProseMirror {
+    padding: 1rem 1.5rem;
+  }
+}
