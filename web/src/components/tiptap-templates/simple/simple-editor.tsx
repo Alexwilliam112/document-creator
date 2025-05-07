@@ -523,9 +523,6 @@ const MainToolbarContent = ({
             />
           </svg>
         </Button>
-        <Button onClick={saveData}>Save</Button>
-
-        <Button onClick={generatePDF}>Generate PDF</Button>
       </ToolbarGroup>
 
       <ToolbarGroup>
@@ -576,6 +573,35 @@ const MainToolbarContent = ({
 
       <ToolbarGroup>
         <ImageUploadButton text="Add" />
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <Button onClick={generatePDF}>Generate PDF</Button>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <Button onClick={saveData}>Save</Button>
       </ToolbarGroup>
 
       <Spacer />
