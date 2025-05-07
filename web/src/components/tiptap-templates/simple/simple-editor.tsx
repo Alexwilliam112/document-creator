@@ -126,27 +126,59 @@ const MainToolbarContent = ({
     fetchEditorContent();
   }, [editor]);
 
+  
+
   const generatePDF = async () => {
     if (!editor) return;
-
+  
     const editorElement = document.querySelector(
       ".simple-editor-content"
     ) as HTMLElement; // Explicitly cast to HTMLElement
     if (!editorElement) return;
-
+  
     // Use html2canvas to capture the editor content as an image
     const canvas = await html2canvas(editorElement, {
       scale: 2, // Increase resolution
       useCORS: true, // Allow cross-origin images
+      allowTaint: false, // Prevent tainted canvases
     });
-
+  
     const imgData = canvas.toDataURL("image/png"); // Convert canvas to image data
     const pdf = new jsPDF("p", "mm", "a4"); // Create a new PDF
-
+  
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width; // Maintain aspect ratio
-
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight); // Add the image to the PDF
+  
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight); // Add the styled content as an image
+  
+    // Parse the editor content to manually embed images
+    const editorContent = editor.getHTML();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(editorContent, "text/html");
+  
+    const images = doc.querySelectorAll("img");
+    let yOffset = pdfHeight + 10; // Start below the styled content
+  
+    for (const img of Array.from(images)) { // Fix applied here
+      const imageUrl = img.src;
+  
+      try {
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const reader = new FileReader();
+  
+        const base64 = await new Promise<string>((resolve, reject) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+  
+        img.src = base64;
+      } catch (error) {
+        console.error("Failed to convert image to Base64:", imageUrl, error);
+      }
+    }
+  
     pdf.save("document.pdf"); // Save the PDF
   };
 
