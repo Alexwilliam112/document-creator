@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useEffect } from "react";
 import { EditorContent, EditorContext, useEditor } from "@tiptap/react";
 import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
@@ -56,6 +57,8 @@ import {
 import { MarkButton } from "@/components/tiptap-ui/mark-button";
 import { TextAlignButton } from "@/components/tiptap-ui/text-align-button";
 import { UndoRedoButton } from "@/components/tiptap-ui/undo-redo-button";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 // --- Icons ---
 import { ArrowLeftIcon } from "@/components/tiptap-icons/arrow-left-icon";
@@ -88,6 +91,152 @@ const MainToolbarContent = ({
   onLinkClick: () => void;
   isMobile: boolean;
 }) => {
+  useEffect(() => {
+    const fetchEditorContent = async () => {
+      const queryParams = new URLSearchParams(window.location.search);
+      const idDoc = queryParams.get("id_doc");
+
+      if (!idDoc) {
+        console.error("id_doc query parameter is missing.");
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `https://api-oos.jojonomic.com/27054/mails/load-docs?id_doc=${idDoc}`
+        );
+        if (!response.ok) {
+          console.error("Failed to fetch editor content.");
+          return;
+        }
+
+        const data = await response.json();
+        if (data.error) {
+          console.error("Error in API response:", data.message);
+          return;
+        }
+
+        const editorContent = data.data.content;
+        editor?.commands.setContent(editorContent); // Set the editor content
+      } catch (error) {
+        console.error("Error fetching editor content:", error);
+      }
+    };
+
+    fetchEditorContent();
+  }, [editor]);
+
+  const generatePDF = async () => {
+    if (!editor) return;
+
+    const editorElement = document.querySelector(
+      ".simple-editor-content"
+    ) as HTMLElement; // Explicitly cast to HTMLElement
+    if (!editorElement) return;
+
+    // Use html2canvas to capture the editor content as an image
+    const canvas = await html2canvas(editorElement, {
+      scale: 2, // Increase resolution
+      useCORS: true, // Allow cross-origin images
+    });
+
+    const imgData = canvas.toDataURL("image/png"); // Convert canvas to image data
+    const pdf = new jsPDF("p", "mm", "a4"); // Create a new PDF
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width; // Maintain aspect ratio
+
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight); // Add the image to the PDF
+    pdf.save("document.pdf"); // Save the PDF
+  };
+
+  //    const queryParams = new URLSearchParams(window.location.search);
+
+  const saveData = async () => {
+    if (!editor) return;
+
+    // Get the editor content as HTML
+    const editorContent = editor.getHTML();
+
+    // Generate the PDF
+    const editorElement = document.querySelector(
+      ".simple-editor-content"
+    ) as HTMLElement;
+    if (!editorElement) return;
+
+    const canvas = await html2canvas(editorElement, {
+      scale: 1, // Reduce the scale to lower the resolution
+      useCORS: true,
+    });
+
+    const imgData = canvas.toDataURL("image/jpeg", 0.7); // Use JPEG format with 70% quality
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight, undefined, "FAST"); // Use "FAST" compression
+
+    // Convert the PDF to a Base64 string
+    const pdfBase64 = pdf.output("datauristring").split(",")[1]; // Remove the "data:application/pdf;base64," prefix
+
+    // Upload the PDF to the file API
+    try {
+      const uploadResponse = await fetch(
+        "https://gateway.jojonomic.com/v1/file",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization:
+              "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzgxODMxNDgsImlhdCI6MTc0NjYyNTU0OCwiaXNzIjoiam9qb25vbWljLWp3dC1zZXJ2aWNlIiwibGFuZyI6ImVuX1VTIiwicHJvdmlkZXIiOiIiLCJzZXNzX2lkIjo3MjkwMzIxLCJzZXNzaW9uX2lkIjoiIiwic2Vzc2lvbl9zZXR0aW5nIjoxLCJzdWIiOjIwMDUwNywidHlwZSI6MSwidXNlciI6eyJjb21wYW55X2lkIjoyNzA1NCwiZW1haWwiOiJqb2pvZGVtb192bXNAZ21haWwuY29tIiwiaWQiOjIwMDUwNywidXNlcl9jb21wYW55X2lkIjoxNzI1NDUsInVzZXJfcm9sZSI6MSwidXNlcl9yb2xlX25hbWUiOiJhZG1pbiJ9fQ.xTWcTGLohI-EggY8fXYrudCoE6IA2Zd-cNW9c_ruiQk",
+          },
+          body: JSON.stringify({
+            content: pdfBase64,
+            filename: "document.pdf",
+          }),
+        }
+      );
+
+      if (!uploadResponse.ok) {
+        alert("Failed to upload PDF.");
+        return;
+      }
+
+      const uploadResult = await uploadResponse.json();
+      const fileUrl = uploadResult.data.url; // Extract the file URL from the response
+
+      // Extract query parameters from the page's URL
+      const queryParams = new URLSearchParams(window.location.search);
+
+      // Create the payload for the save API
+      const payload = {
+        editorContent, // Add editor content
+        pdfUrl: fileUrl, // Add the uploaded file URL
+      };
+
+      // Send the data to the save API
+      const saveResponse = await fetch(
+        `https://api-oos.jojonomic.com/27054/mails/save-doc?${queryParams.toString()}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (saveResponse.ok) {
+        alert("Data saved successfully!");
+      } else {
+        alert("Failed to save data.");
+      }
+    } catch (error) {
+      console.error("Error saving data:", error);
+      alert("An error occurred while saving data.");
+    }
+  };
+
   return (
     <>
       <Spacer />
@@ -374,6 +523,9 @@ const MainToolbarContent = ({
             />
           </svg>
         </Button>
+        <Button onClick={saveData}>Save</Button>
+
+        <Button onClick={generatePDF}>Generate PDF</Button>
       </ToolbarGroup>
 
       <ToolbarGroup>
@@ -386,7 +538,6 @@ const MainToolbarContent = ({
       <ToolbarGroup>
         <HeadingDropdownMenu levels={[1, 2, 3, 4]} />
         <ListDropdownMenu types={["bulletList", "orderedList", "taskList"]} />
-        <NodeButton type="codeBlock" />
         <NodeButton type="blockquote" />
       </ToolbarGroup>
 
@@ -396,7 +547,6 @@ const MainToolbarContent = ({
         <MarkButton type="bold" />
         <MarkButton type="italic" />
         <MarkButton type="strike" />
-        <MarkButton type="code" />
         <MarkButton type="underline" />
         {!isMobile ? (
           <HighlightPopover />
